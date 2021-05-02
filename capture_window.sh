@@ -13,4 +13,4 @@ then
 fi
 
 # Take a picture of the active window and save it in the temp folder:
-xfce4-screenshooter -ws ~/GitHub/teamworks-grabber/tmp_images/tmp.jpeg      # May want to use -r instead of -w to grab a region for easier parsing?
+xfce4-screenshooter -rs ~/GitHub/teamworks-grabber/tmp_images/tmp.png
