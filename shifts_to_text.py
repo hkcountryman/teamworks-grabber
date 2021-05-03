@@ -1,12 +1,17 @@
+from CropBox import CropBox
+from dataclasses import astuple
+from pathlib import Path
 from PIL import Image, ImageOps
 from pytesseract import image_to_string
-from typing import Dict, Union
-
+from typing import List, Union
 ####################################################################################################
 
-def to_text(file: str) -> Dict[int, Union[str, None]]:
+DAYS_IN_WEEK = 7
+BRIGHT_GREEN = (0, 128, 0) # RGB value for the green on the schedule
+
+def to_text(file : Union[Path, str]) -> List[Union[str, None]]:
     """
-    Read and return text from an image.
+    Read and return a list of the text from each shift in a week.
 
     Args:
         file: a PNG depicting the week's schedule
@@ -16,33 +21,27 @@ def to_text(file: str) -> Dict[int, Union[str, None]]:
         of my shifts on those days
     """
     divide_days(file)
-    shifts = {}
-    for i in range(7):
-        filename = "tmp_images/tmp" + str(i) + ".png"
-        shifts[i] = grab_text(filename)
-    return shifts
+    return [grab_text(f"tmp_images/tmp{x}.png") for x in range(7)]
 
-def divide_days(file: str):
+def divide_days(file : Union[Path, str]):
     """
-    Given an image of the schedule for a whole week, saves 7 more images in the tmp_images directory,
-    1 for each separate day and labeled tmp0.png - tmp6.png, starting with Monday.
+    Given an image of the schedule for a whole week, saves 7 images in the tmp_images directory, 1
+    for each separate day and labeled tmp0.png - tmp6.png, starting with Monday.
 
     Args:
         file: the PNG depicting the week's schedule
     """
     img = Image.open(file)
     width, height = img.size
-    crop_width = width // 7
-    # tuple passed to crop() can include left col and top row but not right col or bottom row:
-    top = 0
-    bottom = height - 1
-    for i in range(7):
-        left = crop_width * i
-        right = crop_width * (i + 1) - 1
-        filename = "tmp_images/tmp" + str(i) + ".png"
-        img.crop((left, top, right, bottom)).save(filename)
+    crop_width = width // DAYS_IN_WEEK # width of image of one day
+    boundaries = CropBox(left=0, top=0, right=0, bottom=height-1) # boundaries to crop
+    for i in range(DAYS_IN_WEEK):
+        filename = f"tmp_images/tmp{i}.png"
+        boundaries.left = crop_width * i
+        boundaries.right = crop_width * (i + 1) - 1
+        img.crop(astuple(boundaries)).save(filename)
 
-def extract_content(file: str) -> Image:
+def extract_content(file : Union[Path, str]) -> Image:
     """
     Given an image of the schedule for a single day, crops the image to only contain the lower
     portion so that it shows the scheduled shift but not the date. If the scheduled shift appears
@@ -57,40 +56,23 @@ def extract_content(file: str) -> Image:
     img = Image.open(file)
     width, height = img.size
     border = height // 3 # border where lower section starts
-    # tuple passed to crop() can include left col and top row but not right col or bottom row:
-    left = 0
-    top = border
-    right = width - 1
-    bottom = height - 1
-    lower_section = img.crop((left, top, right, bottom))
-    # invert just the lower section if necessary:
+    boundaries = CropBox(left=0, top=border, right=width-1, bottom=height-1) # boundaries to crop
+    lower_section = img.crop(astuple(boundaries))
+    # check if the image is white text on a green background:
     center = tuple(pixel // 2 for pixel in lower_section.size)
     center_pixel = lower_section.getpixel(center)
-    if center_pixel == (0, 128, 0): # Tesseract has problems reading white on green; must invert
-        negative = invert(lower_section)
-        return negative
-    else:
-        return lower_section
+    # Tesseract has problems reading white text on green; may need to invert:
+    return ImageOps.invert(lower_section) if center_pixel == BRIGHT_GREEN else lower_section
 
-def invert(pic: Image) -> Image:
+def grab_text(file : Union[Path, str]) -> Union[str, None]:
     """
-    Inverts the colors in an image because Tesseract doesn't play nice with light text on dark.
+    Given an image of the schedule for a single day, read the scheduled shift from the image.
 
     Args:
-        pic: PIL.Image object to invert
+        file: the PNG depicting the day's schedule
 
     Returns:
-        The negative PIL.Image object
+        A string with the start and end times of the scheduled shift, or None on a day off.
     """
-    return ImageOps.invert(pic) # negative colors
-
-def grab_text(file: str) -> str:
-    img = extract_content(file)
-    full_text = image_to_string(img)
-    shift = full_text.split("\n")[0] # my shift is on the first line of full text read by Tesseract
-    if shift == "\x0c": # blank string read by Tesseract
-        return None
-    else:
-        return shift
-
-print(to_text("tmp_images/tmp.png"))
+    shift = image_to_string(extract_content(file)).split("\n")[0] # my shift
+    return None if shift == "\x0c" else shift # \x0c is a whitespace constant for days with no shift
