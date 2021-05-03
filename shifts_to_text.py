@@ -8,6 +8,7 @@ from typing import List, Union
 
 DAYS_IN_WEEK = 7
 BRIGHT_GREEN = (0, 128, 0) # RGB value for the green on the schedule
+#monday_date = 0 # day of the month of the first day in the schedule
 
 def to_text(file : Union[Path, str]) -> List[Union[str, None]]:
     """
@@ -21,6 +22,12 @@ def to_text(file : Union[Path, str]) -> List[Union[str, None]]:
         of my shifts on those days
     """
     divide_days(file)
+    '''shifts = []
+    for i in range(7):
+        if i == 0:
+            shifts[i] = grab_text(f"tmp_images/tmp{i}.png", monday=True)
+        else:
+            shifts[i] = grab_text(f"tmp_images/tmp{i}.png")'''
     return [grab_text(f"tmp_images/tmp{x}.png") for x in range(7)]
 
 def divide_days(file : Union[Path, str]):
@@ -41,7 +48,7 @@ def divide_days(file : Union[Path, str]):
         boundaries.right = crop_width * (i + 1) - 1
         img.crop(astuple(boundaries)).save(filename)
 
-def extract_content(file : Union[Path, str]) -> Image:
+def extract_content(file: Union[Path, str]) -> Image:
     """
     Given an image of the schedule for a single day, crops the image to only contain the lower
     portion so that it shows the scheduled shift but not the date. If the scheduled shift appears
@@ -56,6 +63,10 @@ def extract_content(file : Union[Path, str]) -> Image:
     img = Image.open(file)
     width, height = img.size
     border = height // 3 # border where lower section starts
+    '''if monday: # if we are looking at Monday, get the number of the month out
+        boundaries = CropBox(left=0, top=0, right=width-1, bottom=border) # boundaries to crop
+        upper_section = img.crop(astuple(boundaries))
+        monday_date = int("".join(filter(str.isdigit, image_to_string(upper_section))))'''
     boundaries = CropBox(left=0, top=border, right=width-1, bottom=height-1) # boundaries to crop
     lower_section = img.crop(astuple(boundaries))
     # check if the image is white text on a green background:
@@ -76,3 +87,5 @@ def grab_text(file : Union[Path, str]) -> Union[str, None]:
     """
     shift = image_to_string(extract_content(file)).split("\n")[0] # my shift
     return None if shift == "\x0c" else shift # \x0c is a whitespace constant for days with no shift
+
+print(to_text("tmp_images/tmp.png"))
