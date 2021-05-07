@@ -1,9 +1,12 @@
-from CropBox import CropBox
 from dataclasses import astuple
+from typing import List, Union
+
 from pathlib import Path
 from PIL import Image, ImageOps
 from pytesseract import image_to_string
-from typing import List, Union
+
+from .CropBox import CropBox
+
 ####################################################################################################
 
 DAYS_IN_WEEK = 7
@@ -95,5 +98,3 @@ def get_shift(file: Union[Path, str]) -> Union[str, None]:
     if shift[0] == "(": # for some reason Tesseract sees a "(" in front of leading "0" characters
         shift = shift[1:] # so we simply cut the "("
     return None if shift == "\x0c" else shift # \x0c is a whitespace constant for days with no shift
-
-print(date("tmp_images/tmp.png"))

@@ -130,3 +130,6 @@ dmypy.json
 
 # My other stuff
 *.png
+.vscode/settings.json
+credentials.json
+token.json
