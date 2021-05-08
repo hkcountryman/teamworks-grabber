@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 import configparser
 import os
 from pathlib import Path
 from typing import Dict, List, Union
+from utils.LocalTimezone import LocalTimezone
 
 from googleapiclient.discovery import build, Resource
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -14,13 +15,18 @@ from google.oauth2.credentials import Credentials
 from utils import shifts_to_text
 from utils.shifts_to_text import DAYS_IN_WEEK
 
+####################################################################################################
+
 # delete token.json if modifying these scopes:
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/calendar.events"
     ]
-HERE = os.path.dirname(__file__) # directory containing this file
-global TIMEZONE # IANA time zone name
+HERE = os.path.dirname(__file__) # directory containing this program
+IMAGEDIR = "tmp_images/" # directory containing screenshots (inside HERE)
+SCHEDULE = "tmp.png" # schedule picture (inside IMAGEDIR)
+TIMEZONE: str # IANA time zone name
+MONDAY: date # first day of the week
 
 def make_img_dir() -> str:
     """Checks for a tmp_images directory in the top level of the repository or creates it if it
@@ -58,7 +64,7 @@ def authenticate() -> Resource:
     # authorization flow completes for the first time:
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    # if there are no (valid) credentials available, let the user log in:
+    # If there are no (valid) credentials available, let the user log in:
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -106,36 +112,25 @@ def get_events(file: Union[Path, str]) -> list:
         A list of JSON serializables describing events to add to the calendar.
     """
     shifts = shifts_to_text.shifts(file)
-    monday = which_week(file) # first day of the week
+    MONDAY = which_week(file) # first day of the week
+    # Add JSON serializable events to list:
     events = []
     for i in range(DAYS_IN_WEEK):
-        day = monday + timedelta(days=i)
-        start, end = shifts[i]
-        print(f"start:{start}, end:{end}")
-        if start != None:
+        day = MONDAY + timedelta(days=i) # shift date
+        start_time, end_time = shifts[i] # shift start and end time
+        if start_time != None:
+            local = LocalTimezone() # use to get offset from UTC
+            start_datetime = datetime.combine(day, start_time, tzinfo=local) # shift start datetime
+            end_datetime = datetime.combine(day, end_time, tzinfo=local) # shift end datetime
             events.append({
                 "summary": "Starbucks",
-                "start"  : {"timeZone": TIMEZONE, "dateTime": f"{day:%Y-%m-%d}T{start:%H:%M}:00+00:00"},
-                "end"    : {"timeZone": TIMEZONE, "dateTime": f"{day:%Y-%m-%d}T{end:%H:%M}:00+00:00"}
+                "start"  : {"timeZone": TIMEZONE, "dateTime": f"{start_datetime.isoformat()}"},
+                "end"    : {"timeZone": TIMEZONE, "dateTime": f"{end_datetime.isoformat()}"}
             })
     return events
-####################################################################################################
 
 if __name__ == "__main__":
-    creds = None
-    # token.json stores the user's access and refresh tokens, and is created automatically when the
-    # authorization flow completes for the first time:
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    # if there are no (valid) credentials available, let the user log in:
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
-            token.write(creds.to_json()) # save the credentials for the next run
+    # Authenticate to read and write to the calendar:
     service = authenticate()
     # Which calendar are we using?
     config_file = f"{HERE}/config.ini"
@@ -145,13 +140,24 @@ if __name__ == "__main__":
     # Request IANA time zone of calendar:
     TIMEZONE = service.calendarList().get(calendarId=calendarId).execute()["timeZone"]
     # Take screenshot of schedule, including only scheduled (not punched) hours and days:
-    #printscreen()
-    # Add all shifts for the screenshotted week to the calendar:
-    for event in get_events("tmp_images/tmp.png"):
-        service.events().insert(calendarId=calendarId, body=event).execute()
-    '''event = {
-        "summary": "foo",
-        "start": {"timeZone": TIMEZONE, "dateTime": "2021-05-07T01:15:34+00:00"},
-        "end": {"timeZone": TIMEZONE, "dateTime": "2021-05-08T01:15:34+00:00"}
-        }
-    service.events().insert(calendarId="primary", body=event).execute()'''
+    printscreen()
+    # Determine bounds of week we are editing:
+    MONDAY = which_week(f"{IMAGEDIR}{SCHEDULE}")
+    # Retrieve list of events scheduled in that week:
+    events_search = service.events().list( # events already in this week
+        calendarId=calendarId,
+        timeMin=(datetime.combine( # creating a datetime based on MONDAY
+            date=MONDAY,
+            time=time(hour=0, minute=0),
+            tzinfo=LocalTimezone())
+            ).isoformat()
+        ).execute()
+    existing_events = events_search.get("items", [])
+    # If the shift is not already scheduled, add it:
+    for event in get_events(f"{IMAGEDIR}{SCHEDULE}"):
+        if event not in [{ # summary of existing events to only include summary, start, and end
+            "summary": x["summary"],
+            "start"  : x["start"],
+            "end"    : x["end"]
+            } for x in existing_events]:
+            service.events().insert(calendarId=calendarId, body=event).execute()

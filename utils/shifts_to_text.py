@@ -30,7 +30,15 @@ def date(file: Union[Path, str]) -> str:
     monday = img.crop(astuple(boundaries))
     # Read number from Monday:
     date = image_to_string(monday)
-    number = int("".join(filter(str.isdigit, date)))
+    try:
+        number = int("".join(filter(str.isdigit, date)))
+    except ValueError:
+        number = input("Could not read Monday's date from image. What number is it?\n")
+        try:
+            number = int(number)
+        except:
+            print("Invalid day number. Exiting.")
+            exit()
     return f"0{number}" if number < 10 else str(number)
 
 def shifts(file: Union[Path, str]) -> List[Tuple[Union[time, None]]]:
@@ -43,21 +51,12 @@ def shifts(file: Union[Path, str]) -> List[Tuple[Union[time, None]]]:
         A list of shifts as tupples with start and end times (or None for no shift), starting with
         Monday's shift.
     """
+    # Save each day as its own image:
     divide_days(file)
-    shifts = [get_shift(f"tmp_images/tmp{x}.png") for x in range(DAYS_IN_WEEK)] # shifts as strings
+    # Extract shifts as strings:
+    shifts = [get_shift(f"tmp_images/tmp{x}.png") for x in range(DAYS_IN_WEEK)]
+    # Convert to list of paired time objects:
     return [shift_to_tuple(x) for x in shifts]
-
-'''def shifts_old(file: Union[Path, str]) -> List[Union[str, None]]:
-    """Read and return a list of the text from each shift in a week.
-
-    Args:
-        file: A PNG depicting the week's schedule.
-
-    Returns:
-        A list of shifts as strings (or None for no shift), starting with Monday's shift.
-    """
-    divide_days(file)
-    return [get_shift(f"tmp_images/tmp{x}.png") for x in range(7)]'''
 
 def divide_days(file: Union[Path, str]):
     """Given an image of the schedule for a whole week, saves 7 images in the tmp_images directory,
