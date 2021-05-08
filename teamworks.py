@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta
 import configparser
 import os
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Union
 from utils.LocalTimezone import LocalTimezone
 
 from googleapiclient.discovery import build, Resource
