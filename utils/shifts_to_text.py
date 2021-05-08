@@ -9,8 +9,6 @@ from pytesseract import image_to_string
 
 from .CropBox import CropBox
 
-####################################################################################################
-
 DAYS_IN_WEEK = 7
 BRIGHT_GREEN = (0, 128, 0) # RGB value for the green on the schedule
 

@@ -17,7 +17,7 @@ from utils.shifts_to_text import DAYS_IN_WEEK
 
 ####################################################################################################
 
-# delete token.json if modifying these scopes:
+# Delete token.json if modifying these scopes:
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/calendar.events"
