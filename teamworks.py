@@ -4,7 +4,7 @@ from datetime import date, timedelta
 import configparser
 import os
 from pathlib import Path
-from typing import Union
+from typing import Dict, List, Union
 
 from googleapiclient.discovery import build, Resource
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -34,7 +34,7 @@ def make_img_dir() -> str:
         os.makedirs(img_dir)
     return img_dir
 
-def printscreen():
+def printscreen() -> str:
     """Calls the screenshot program (as configured in config.ini) and saves the screenshot in the
     tmp_images directory.
     """
@@ -96,13 +96,29 @@ def which_week(file: Union[Path, str]) -> date:
     else:
         raise RuntimeError("No Monday with that date occurs in the next three weeks.")
 
-def get_event_times(file: Union[Path, str]):
+def get_events(file: Union[Path, str]) -> list:
+    """Obtains a list of the events to add to the calendar for the week shown in the schedule.
+
+    Args:
+        file: A PNG depicting the week's schedule.
+
+    Returns:
+        A list of JSON serializables describing events to add to the calendar.
+    """
     shifts = shifts_to_text.shifts(file)
     monday = which_week(file) # first day of the week
+    events = []
     for i in range(DAYS_IN_WEEK):
         day = monday + timedelta(days=i)
-        if shifts[i] != None:
-            print(shifts[i])
+        start, end = shifts[i]
+        print(f"start:{start}, end:{end}")
+        if start != None:
+            events.append({
+                "summary": "Starbucks",
+                "start"  : {"timeZone": TIMEZONE, "dateTime": f"{day:%Y-%m-%d}T{start:%H:%M}:00+00:00"},
+                "end"    : {"timeZone": TIMEZONE, "dateTime": f"{day:%Y-%m-%d}T{end:%H:%M}:00+00:00"}
+            })
+    return events
 ####################################################################################################
 
 if __name__ == "__main__":
@@ -121,9 +137,18 @@ if __name__ == "__main__":
         with open("token.json", "w") as token:
             token.write(creds.to_json()) # save the credentials for the next run
     service = authenticate()
-    # request IANA time zone of primary calendar:
-    TIMEZONE = service.calendarList().get(calendarId="primary").execute()["timeZone"]
-    get_event_times("tmp_images/tmp.png")
+    # Which calendar are we using?
+    config_file = f"{HERE}/config.ini"
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    calendarId = f"{config['calendar_api']['calendar']}"
+    # Request IANA time zone of calendar:
+    TIMEZONE = service.calendarList().get(calendarId=calendarId).execute()["timeZone"]
+    # Take screenshot of schedule, including only scheduled (not punched) hours and days:
+    #printscreen()
+    # Add all shifts for the screenshotted week to the calendar:
+    for event in get_events("tmp_images/tmp.png"):
+        service.events().insert(calendarId=calendarId, body=event).execute()
     '''event = {
         "summary": "foo",
         "start": {"timeZone": TIMEZONE, "dateTime": "2021-05-07T01:15:34+00:00"},

@@ -1,7 +1,9 @@
 from dataclasses import astuple
-from typing import List, Union
-
+from datetime import datetime, time
+import re
+from typing import List, Tuple, Union
 from pathlib import Path
+
 from PIL import Image, ImageOps
 from pytesseract import image_to_string
 
@@ -19,17 +21,33 @@ def date(file: Union[Path, str]) -> str:
         file: A PNG depicting the week's schedule.
 
     Returns:
-        str: The number of the day as a 0-padded string.
+        The number of the day (2 digits) as a string.
     """
     img = Image.open(file)
     width, height = img.size
-    boundaries = CropBox(left=0, top=0, right=width//7, bottom=height//3)
-    monday = img.crop(astuple(boundaries)) # extract portion of calendar with Monday
+    # Extract portion of calendar with Monday:
+    boundaries = CropBox(left=0, top=0, right=width//7, bottom=height//3) # boundaries to crop
+    monday = img.crop(astuple(boundaries))
+    # Read number from Monday:
     date = image_to_string(monday)
     number = int("".join(filter(str.isdigit, date)))
     return f"0{number}" if number < 10 else str(number)
 
-def shifts(file: Union[Path, str]) -> List[Union[str, None]]:
+def shifts(file: Union[Path, str]) -> List[Tuple[Union[time, None]]]:
+    """Read and return a list of the text from each shift in a week.
+
+    Args:
+        file: A PNG depicting the week's schedule.
+
+    Returns:
+        A list of shifts as tupples with start and end times (or None for no shift), starting with
+        Monday's shift.
+    """
+    divide_days(file)
+    shifts = [get_shift(f"tmp_images/tmp{x}.png") for x in range(DAYS_IN_WEEK)] # shifts as strings
+    return [shift_to_tuple(x) for x in shifts]
+
+'''def shifts_old(file: Union[Path, str]) -> List[Union[str, None]]:
     """Read and return a list of the text from each shift in a week.
 
     Args:
@@ -39,7 +57,7 @@ def shifts(file: Union[Path, str]) -> List[Union[str, None]]:
         A list of shifts as strings (or None for no shift), starting with Monday's shift.
     """
     divide_days(file)
-    return [get_shift(f"tmp_images/tmp{x}.png") for x in range(7)]
+    return [get_shift(f"tmp_images/tmp{x}.png") for x in range(7)]'''
 
 def divide_days(file: Union[Path, str]):
     """Given an image of the schedule for a whole week, saves 7 images in the tmp_images directory,
@@ -74,7 +92,7 @@ def extract_content(file: Union[Path, str]) -> Image:
     border = height // 3 # border where lower section starts
     boundaries = CropBox(left=0, top=border, right=width-1, bottom=height-1) # boundaries to crop
     lower_section = img.crop(astuple(boundaries))
-    # check if the image is white text on a green background:
+    # Check if the image is white text on a green background:
     center = tuple(pixel // 2 for pixel in lower_section.size)
     center_pixel = lower_section.getpixel(center)
     # Tesseract has problems reading white text on green; may need to invert:
@@ -90,8 +108,31 @@ def get_shift(file: Union[Path, str]) -> Union[str, None]:
         A string with the start and end times of the scheduled shift, or None on a day off.
     """
     shift = image_to_string(extract_content(file)).split("\n")[0] # my shift
-    # for some reason Tesseract sees a "(" in front of leading "0" characters and a "." at the end
-    # of those same strings, so we cut both:
-    if shift[0] == "(":
-        shift = shift[1:-1]
+    # Occasionally Tesseract mistakenly sees the following characters at the beginning or end of the
+    # shift strings:
+    if shift[0] == "(" or shift[0] == "{":
+        shift = shift[1:]
+    if shift[-1] == ".":
+        shift = shift[:-1]
     return None if shift == "\x0c" else shift # \x0c is a whitespace constant for days with no shift
+
+def shift_to_tuple(shift: Union[str, None]) -> Tuple[Union[time, None]]:
+    """Given a shift as a string, parses it to time objects and returns the start and end times.
+
+    Args:
+        shift: The shift string, for example "04:30 pm - 09:00 pm".
+
+    Returns:
+        A tuple containing the start time and end time objects, or (None, None) for no shift.
+    """
+    if shift == None:
+        return (None, None)
+    else:
+        start, end = re.split("-", shift, 1)
+        # Extract from the strings (%I:%M %p corresponds to hour:minute AM/PM):
+        start_datetime = datetime.strptime(start.strip(), "%I:%M %p")
+        end_datetime = datetime.strptime(end.strip(), "%I:%M %p")
+        # Convert from datetimes to times (independent of a particular day):
+        start_time = time(hour=start_datetime.hour, minute=start_datetime.minute)
+        end_time = time(hour=end_datetime.hour, minute=end_datetime.minute)
+        return (start_time, end_time)
