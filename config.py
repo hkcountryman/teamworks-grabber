@@ -17,12 +17,13 @@ if __name__ == "__main__":
     inp = input()
     new_settings["calendar"] = inp if not inp == "" else "primary"
     # Edit config.ini with obtained values:
-    with open("config.ini", "w+") as f:
+    with open("config.ini", "a+") as f:
         for line in f.readlines():
             # Ignore headers and comments:
             if line[0] == "[" or line[0] == ";":
-                pass
-            # Read current settings and their values:
-            key, value = re.split("=", line, 1)
-            # Replace with value from new settings:
-            str.replace(line.strip(), f"{key}={new_settings[key]}\n")
+                continue
+            else:
+                # Read current settings and their values:
+                #key, value = re.split("=", line, 1)
+                # Replace with value from new settings:
+                #str.replace(line.strip(), f"{key}={new_settings[key]}\n")
