@@ -2,6 +2,7 @@
 Use a command line program that can grab screenshots of portions of your screen to snap a picture of the Teamworks website, read the image with Tesseract OCR, and upload your shifts to your Google calendar. If it sounds like overkill to you, you underestimate how much I object to using a separate calendar for my work schedule. Also I was scared to get banned if I tried scraping the HTML.
 
 ## Requirements
+- Python 3.6+
 - Probably Linux, unless you know of a command line screenshot program for other systems
 - Tesseract, which can probably be installed through your package manager
 - An account with [Google Cloud Platform](https://console.cloud.google.com/getting-started). See [the wiki](https://github.com/hkcountryman/teamworks-grabber/wiki#integrating-auth-into-the-program) for further instructions.
