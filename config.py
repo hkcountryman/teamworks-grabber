@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from fileinput import FileInput
 import re
 
 if __name__ == "__main__":
@@ -17,13 +18,23 @@ if __name__ == "__main__":
     inp = input()
     new_settings["calendar"] = inp if not inp == "" else "primary"
     # Edit config.ini with obtained values:
-    with open("config.ini", "a+") as f:
-        for line in f.readlines():
+    # Fetch entire contents of config.ini:
+    with open("config.ini", "r") as file:
+        contents = file.read()
+    # Fetch current settings:
+    old_settings = {} # old settings and their corresponding values
+    print(contents)
+    with open("config.ini", "r") as file:
+        # Read each line to extract current settings:
+        for line in file.readlines():
             # Ignore headers and comments:
             if line[0] == "[" or line[0] == ";":
                 continue
             else:
                 # Read current settings and their values:
-                #key, value = re.split("=", line, 1)
-                # Replace with value from new settings:
-                #str.replace(line.strip(), f"{key}={new_settings[key]}\n")
+                key, value = re.split("=", line, 1)
+                old_settings[key] = value
+                contents = contents.replace(f"{key}={value}\n", f"{key}={new_settings[key]}\n")
+    '''with open("config.ini", "w") as file:
+        file.write(contents)
+'''
