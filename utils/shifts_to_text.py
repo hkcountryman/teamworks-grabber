@@ -16,7 +16,7 @@ def date(file: Union[Path, str]) -> str:
     """Get the number of the first day of the week (Monday).
 
     Args:
-        file: A PNG depicting the week's schedule.
+        file: A JPEG depicting the week's schedule.
 
     Returns:
         The number of the day (2 digits) as a string.
@@ -43,7 +43,7 @@ def shifts(file: Union[Path, str]) -> List[Tuple[Union[time, None]]]:
     """Read and return a list of the text from each shift in a week.
 
     Args:
-        file: A PNG depicting the week's schedule.
+        file: A JPEG depicting the week's schedule.
 
     Returns:
         A list of shifts as tupples with start and end times (or None for no shift), starting with
@@ -52,23 +52,23 @@ def shifts(file: Union[Path, str]) -> List[Tuple[Union[time, None]]]:
     # Save each day as its own image:
     divide_days(file)
     # Extract shifts as strings:
-    shifts = [get_shift(f"tmp_images/tmp{x}.png") for x in range(DAYS_IN_WEEK)]
+    shifts = [get_shift(f"tmp_images/tmp{x}.jpeg") for x in range(DAYS_IN_WEEK)]
     # Convert to list of paired time objects:
     return [shift_to_tuple(x) for x in shifts]
 
 def divide_days(file: Union[Path, str]):
     """Given an image of the schedule for a whole week, saves 7 images in the tmp_images directory,
-    1 for each separate day and labeled tmp0.png - tmp6.png, starting with Monday.
+    1 for each separate day and labeled tmp0.jpeg - tmp6.jpeg, starting with Monday.
 
     Args:
-        file: The PNG depicting the week's schedule.
+        file: The JPEG depicting the week's schedule.
     """
     img = Image.open(file)
     width, height = img.size
     crop_width = width // DAYS_IN_WEEK # width of image of one day
     boundaries = CropBox(left=0, top=0, right=0, bottom=height-1) # boundaries to crop
     for i in range(DAYS_IN_WEEK):
-        filename = f"tmp_images/tmp{i}.png"
+        filename = f"tmp_images/tmp{i}.jpeg"
         boundaries.left = crop_width * i
         boundaries.right = crop_width * (i + 1) - 1
         img.crop(astuple(boundaries)).save(filename)
@@ -79,7 +79,7 @@ def extract_content(file: Union[Path, str]) -> Image:
     against a green background, the image is then inverted to make it easier for the OCR to read.
 
     Args:
-        file: The PNG depicting the day's schedule.
+        file: The JPEG depicting the day's schedule.
 
     Returns:
         The cropped (and possibly inverted) PIL.Image object.
@@ -99,7 +99,7 @@ def get_shift(file: Union[Path, str]) -> Union[str, None]:
     """Given an image of the schedule for a single day, read the scheduled shift from the image.
 
     Args:
-        file: The PNG depicting the day's schedule.
+        file: The JPEG depicting the day's schedule.
 
     Returns:
         A string with the start and end times of the scheduled shift, or None on a day off.
