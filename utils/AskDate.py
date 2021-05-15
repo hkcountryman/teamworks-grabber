@@ -41,8 +41,6 @@ class AskDate():
         cancel.pack(side=tk.LEFT, padx=10)
         submit.pack(side=tk.RIGHT, padx=10)
         buttons.pack(side=tk.BOTTOM)
-        #cancel.pack(anchor=tk.W, side=tk.BOTTOM)
-        #submit.pack(anchor=tk.W, side=tk.BOTTOM)
         wk2.pack(anchor=tk.W, side=tk.BOTTOM)
         wk1.pack(anchor=tk.W, side=tk.BOTTOM)
         wk0.pack(anchor=tk.W, side=tk.BOTTOM)
