@@ -12,35 +12,38 @@ class AskDate():
         self.window.protocol("WM_DELETE_WINDOW", disable)
 
         # Window contents:
-        label = tk.Label(self.window, text="Which week are you updating?")
+        label = tk.Frame(borderwidth=10)
+        text = tk.Label(master=label, text="Which week are you updating?")
         wk0 = tk.Radiobutton(
-            self.window,
             text="This week",
             variable=self.response,
             value="This week"
         )
         wk1 = tk.Radiobutton(
-            self.window,
             text="Next week",
             variable=self.response,
             value="Next week"
         )
         wk2 = tk.Radiobutton(
-            self.window,
             text="Two weeks out",
             variable=self.response,
             value="Two weeks out"
         )
-        cancel = tk.Button(self.window, text="Cancel", command=exit)
+        buttons = tk.Frame(borderwidth=10)
+        cancel = tk.Button(master=buttons, text="Cancel", command=exit)
         def close():
             self.window.destroy()
-        submit = tk.Button(self.window, text="Submit", command=close)
+        submit = tk.Button(master=buttons, text="Submit", command=close)
 
         # Add everything to self.window and open it
+        text.pack()
         label.pack(side=tk.TOP)
-        cancel.pack(side=tk.BOTTOM)
-        submit.pack(side=tk.BOTTOM)
-        wk2.pack(side=tk.BOTTOM)
-        wk1.pack(side=tk.BOTTOM)
-        wk0.pack(side=tk.BOTTOM)
+        cancel.pack(side=tk.LEFT, padx=10)
+        submit.pack(side=tk.RIGHT, padx=10)
+        buttons.pack(side=tk.BOTTOM)
+        #cancel.pack(anchor=tk.W, side=tk.BOTTOM)
+        #submit.pack(anchor=tk.W, side=tk.BOTTOM)
+        wk2.pack(anchor=tk.W, side=tk.BOTTOM)
+        wk1.pack(anchor=tk.W, side=tk.BOTTOM)
+        wk0.pack(anchor=tk.W, side=tk.BOTTOM)
         self.window.mainloop()
