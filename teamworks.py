@@ -12,7 +12,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-from utils import shifts_to_text, AskDate
+from utils.AskDate import AskDate
+from utils import shifts_to_text
 from utils.shifts_to_text import DAYS_IN_WEEK
 
 ####################################################################################################
@@ -88,7 +89,7 @@ def which_week() -> date:
     monday2 = monday1 + timedelta(days=7) # next monday
     monday3 = monday2 + timedelta(days=7) # next next monday
     # Get the actual Monday from the schedule:
-    schedule_monday = AskDate.AskDate().response # first date on schedule
+    schedule_monday = AskDate().response.get() # first date on schedule
     if schedule_monday == "This week":
         return monday1
     elif schedule_monday == "Next week":
@@ -106,7 +107,6 @@ def get_events(file: Union[Path, str]) -> list:
         A list of JSON serializables describing events to add to the calendar.
     """
     shifts = shifts_to_text.shifts(file)
-    MONDAY = which_week() # first day of the week
     # Add JSON serializable events to list:
     events = []
     for i in range(DAYS_IN_WEEK):
