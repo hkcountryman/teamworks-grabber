@@ -12,7 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-from utils import shifts_to_text
+from utils import shifts_to_text, AskDate
 from utils.shifts_to_text import DAYS_IN_WEEK
 
 ####################################################################################################
@@ -75,21 +75,12 @@ def authenticate() -> Resource:
             token.write(creds.to_json()) # save the credentials for the next run
     return build("calendar", "v3", credentials=creds)
 
-def which_week(file: Union[Path, str]) -> date:
-    """Extrapolates which week is to be filled out based on the number of the first day of the week
-    depicted in the schedule. We assume that today's date is within or before the week being
-    uploaded. Because Starbucks schedules are written three weeks out, there are only three possible
-    Mondays that might be depicted. Whichever has a date matching the number read from the schedule
-    must be in the week to be filled out.
-
-    Args:
-        file: A PNG depicting the week's schedule.
+def which_week() -> date:
+    """Asks the user which week they are uploading to the calendar and determines Monday's date that
+    week.
 
     Returns:
-        The Monday of the week to be filled out.
-
-    Raises:
-        RuntimeError: If no Mondays in the next three week match.
+        The Monday of the week to be uploaded.
     """
     # Get possible Mondays (this week, next week, or the week after):
     today = date.today()
@@ -97,21 +88,13 @@ def which_week(file: Union[Path, str]) -> date:
     monday2 = monday1 + timedelta(days=7) # next monday
     monday3 = monday2 + timedelta(days=7) # next next monday
     # Get the actual Monday from the schedule:
-    schedule_monday = shifts_to_text.date(file) # first date on schedule
-    # If Tesseract had trouble reading the schedule, schedule_monday will be in string form:
-    if type(schedule_monday) == str:
-        if schedule_monday == "This week":
-            return monday1
-        elif schedule_monday == "Next week":
-            return monday2
-        else: # two weeks out
-            return monday3
-    # Otherwise, schedule_monday will be in integer form and we must deduce which date it is:
-    date_objs = [monday1, monday2, monday3] # list of possible mondays as datetime.date objects
-    if schedule_monday in (date_strs := [day.strftime("%d") for day in date_objs]):
-        return date_objs[date_strs.index(schedule_monday)]
-    else:
-        raise RuntimeError("No Monday with that date occurs in the next three weeks.")
+    schedule_monday = AskDate.AskDate().response # first date on schedule
+    if schedule_monday == "This week":
+        return monday1
+    elif schedule_monday == "Next week":
+        return monday2
+    else: # two weeks out
+        return monday3
 
 def get_events(file: Union[Path, str]) -> list:
     """Obtains a list of the events to add to the calendar for the week shown in the schedule.
@@ -123,7 +106,7 @@ def get_events(file: Union[Path, str]) -> list:
         A list of JSON serializables describing events to add to the calendar.
     """
     shifts = shifts_to_text.shifts(file)
-    MONDAY = which_week(file) # first day of the week
+    MONDAY = which_week() # first day of the week
     # Add JSON serializable events to list:
     events = []
     for i in range(DAYS_IN_WEEK):
@@ -153,7 +136,7 @@ if __name__ == "__main__":
     # Take screenshot of schedule, including only scheduled (not punched) hours and days:
     printscreen()
     # Determine bounds of week we are editing:
-    MONDAY = which_week(f"{IMAGEDIR}{SCHEDULE}")
+    MONDAY = which_week()
     # Retrieve list of events scheduled in that week:
     events_search = service.events().list( # events already in this week
         calendarId=calendarId,
