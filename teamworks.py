@@ -91,11 +91,22 @@ def which_week(file: Union[Path, str]) -> date:
     Raises:
         RuntimeError: If no Mondays in the next three week match.
     """
-    schedule_monday = shifts_to_text.date(file) # first date on schedule
+    # Get possible Mondays (this week, next week, or the week after):
     today = date.today()
     monday1 = today - timedelta(days=today.weekday()) # last monday
     monday2 = monday1 + timedelta(days=7) # next monday
     monday3 = monday2 + timedelta(days=7) # next next monday
+    # Get the actual Monday from the schedule:
+    schedule_monday = shifts_to_text.date(file) # first date on schedule
+    # If Tesseract had trouble reading the schedule, schedule_monday will be in string form:
+    if type(schedule_monday) == str:
+        if schedule_monday == "This week":
+            return monday1
+        elif schedule_monday == "Next week":
+            return monday2
+        else: # two weeks out
+            return monday3
+    # Otherwise, schedule_monday will be in integer form and we must deduce which date it is:
     date_objs = [monday1, monday2, monday3] # list of possible mondays as datetime.date objects
     if schedule_monday in (date_strs := [day.strftime("%d") for day in date_objs]):
         return date_objs[date_strs.index(schedule_monday)]

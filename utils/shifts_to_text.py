@@ -1,6 +1,7 @@
 from dataclasses import astuple
 from datetime import datetime, time
 import re
+import tkinter as tk
 from typing import List, Tuple, Union
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from PIL import Image, ImageOps
 from pytesseract import image_to_string
 
 from .CropBox import CropBox
+from .AskDate import AskDate
 
 DAYS_IN_WEEK = 7
 BRIGHT_GREEN = (0, 128, 0) # RGB value for the green on the schedule
@@ -30,14 +32,35 @@ def date(file: Union[Path, str]) -> str:
     date = image_to_string(monday)
     try:
         number = int("".join(filter(str.isdigit, date)))
+        return f"0{number}" if number < 10 else str(number)
     except ValueError:
-        number = input("Could not read Monday's date from image. What number is it?\n")
+        x = AskDate().response
+        print(x)
+        return x
+        '''number = input("Could not read Monday's date from image. What number is it?\n")
         try:
             number = int(number)
         except:
             print("Invalid day number. Exiting.")
-            exit()
-    return f"0{number}" if number < 10 else str(number)
+            exit()'''
+    #return f"0{number}" if number < 10 else str(number)
+####################################################################################################
+def ask_date() -> str:
+    window = tk.Tk()
+    label = tk.Label(window, text="Couldn't read date.\nWhich week are you updating?")
+    def click(button: tk.Button):
+        return button.cget("text")
+    wk0 = tk.Button(window, text="This week")
+    wk0.bind("<Button-1>", lambda: "this")
+    wk1 = tk.Button(window, text="Next week")
+    wk1.bind("<Button-1>", lambda: "next")
+    wk2 = tk.Button(window, text="Two weeks out")
+    wk2.bind("<Button-1>", lambda: "two")
+    label.pack(side=tk.TOP)
+    wk2.pack(side=tk.BOTTOM)
+    wk1.pack(side=tk.BOTTOM)
+    wk0.pack(side=tk.BOTTOM)
+    window.mainloop()
 
 def shifts(file: Union[Path, str]) -> List[Tuple[Union[time, None]]]:
     """Read and return a list of the text from each shift in a week.
